@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000008">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Космос | Ракета, Луна, Шаралёт и Лосяш</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background-color: #000008;
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        canvas { display: block; touch-action: none; }
+
+        #info {
+            position: fixed;
+            top: max(15px, env(safe-area-inset-top));
+            left: max(15px, env(safe-area-inset-left));
+            z-index: 10;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(0,0,0,0.9);
+            max-width: 70vw;
+        }
+
+        h1 {
+            font-size: clamp(1rem, 4vw, 1.8rem);
+            margin: 0;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #ffe66d);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: 1px;
+            line-height: 1.1;
+        }
+
+        #info p {
+            margin: 5px 0 0;
+            opacity: 0.85;
+            font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+            color: #aaccff;
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: max(15px, env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 8px 18px;
+            border-radius: 30px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            font-size: clamp(0.65rem, 2.4vw, 0.85rem);
+            border: 1px solid rgba(100,180,255,0.3);
+            pointer-events: none;
+            z-index: 10;
+            color: #cce0ff;
+            box-shadow: 0 0 20px rgba(80,150,255,0.25);
+            white-space: nowrap;
+            max-width: 92vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000008;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            transition: opacity 0.8s;
+            color: #4ecdc4;
+            font-size: clamp(0.9rem, 3.5vw, 1.2rem);
+            letter-spacing: 3px;
+        }
+        #loading.hidden { opacity: 0; pointer-events: none; }
+
+        @media (max-width: 480px) {
+            #info p { display: none; }
+            .instructions {
+                padding: 6px 12px;
+                font-size: 0.65rem;
+            }
+        }
+
+        @media (max-height: 500px) {
+            #info h1 { font-size: 0.95rem; }
+            #info p { display: none; }
+            .instructions { bottom: 8px; padding: 5px 12px; font-size: 0.65rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">ЗАПУСК СИСТЕМ...</div>
+
+    <div id="info">
+        <h1>КОСМИЧЕСКАЯ СЦЕНА</h1>
+        <p>Ракета • Луна с пришельцами • Шаралёт с Пином • Лосяш в скафандре</p>
+    </div>
+
+    <div class="instructions">🖱 Вращение • Колесо/Пинч — неограниченный зум</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ============================================================
+        // 1. СЦЕНА, КАМЕРА, РЕНДЕР
+        // ============================================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000008);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 100000);
+        camera.position.set(0, 10, 40);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        document.body.appendChild(renderer.domElement);
+
+        // ============================================================
+        // 2. КОНТРОЛЫ
+        // ============================================================
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.4;
+        controls.enableZoom = true;
+        controls.enablePan = false;
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.minDistance = 0.01;
+        controls.maxDistance = Infinity;
+        controls.target.set(0, 2, 0);
+        controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
+
+        // ============================================================
+        // 3. ОСВЕЩЕНИЕ
+        // ============================================================
+        scene.add(new THREE.AmbientLight(0x334466, 0.75));
+
+        const sunLight = new THREE.DirectionalLight(0xfff5e0, 2.0);
+        sunLight.position.set(20, 25, 15);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.set(1024, 1024);
+        sunLight.shadow.camera.near = 1;
+        sunLight.shadow.camera.far = 100;
+        sunLight.shadow.camera.left = -40;
+        sunLight.shadow.camera.right = 40;
+        sunLight.shadow.camera.top = 40;
+        sunLight.shadow.camera.bottom = -40;
+        sunLight.shadow.bias = -0.0005;
+        scene.add(sunLight);
+
+        const rimLight = new THREE.DirectionalLight(0x4466ff, 0.9);
+        rimLight.position.set(-25, 10, -20);
+        scene.add(rimLight);
+
+        const fillLight = new THREE.PointLight(0x8888ff, 0.5, 100);
+        fillLight.position.set(0, -10, 20);
+        scene.add(fillLight);
+
+        // ============================================================
+        // 4. РАКЕТА (слева)
+        // ============================================================
+        const rocketGroup = new THREE.Group();
+        rocketGroup.position.set(-14, 2, 0);
+        scene.add(rocketGroup);
+
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe8e8f0, roughness: 0.3, metalness: 0.85 });
+        const redMat = new THREE.MeshStandardMaterial({ color: 0xd42626, roughness: 0.4, metalness: 0.6 });
+        const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.6, metalness: 0.9 });
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.2, metalness: 1.0 });
+        const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc33, roughness: 0.25, metalness: 1.0 });
+        const glassMat = new THREE.MeshStandardMaterial({
+            color: 0x66ccff, roughness: 0.05, metalness: 0.3,
+            emissive: 0x004466, emissiveIntensity: 0.6, transparent: true, opacity: 0.85
+        });
+
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 6, 32), bodyMat);
+        body.castShadow = true; body.receiveShadow = true;
+        rocketGroup.add(body);
+
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(1.0, 2.2, 32), redMat);
+        nose.position.y = 4.1;
+        nose.castShadow = true;
+        rocketGroup.add(nose);
+
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.8, 16), metalMat);
+        tip.position.y = 5.6;
+        tip.castShadow = true;
+        rocketGroup.add(tip);
+
+        [-2.5, -1.0, 0.5, 2.0].forEach((y) => {
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(1.02, 0.08, 12, 32), redMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = y;
+            ring.castShadow = true;
+            rocketGroup.add(ring);
+        });
+
+        const winRing = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.08, 12, 24), goldMat);
+        winRing.position.set(0, 1.2, 0.95);
+        rocketGroup.add(winRing);
+
+        const winGlass = new THREE.Mesh(new THREE.CircleGeometry(0.35, 24), glassMat);
+        winGlass.position.set(0, 1.2, 1.0);
+        rocketGroup.add(winGlass);
+
+        const finShape = new THREE.Shape();
+        finShape.moveTo(0, 0);
+        finShape.lineTo(0, 1.8);
+        finShape.lineTo(1.4, 0.2);
+        finShape.lineTo(1.4, -0.3);
+        finShape.lineTo(0, -0.6);
+        finShape.lineTo(0, 0);
+
+        const finGeo = new THREE.ExtrudeGeometry(finShape, {
+            depth: 0.12, bevelEnabled: true, bevelThickness: 0.03,
+            bevelSize: 0.03, bevelSegments: 2
+        });
+        finGeo.translate(-0.7, -1.2, -0.06);
+
+        for (let i = 0; i < 4; i++) {
+            const fin = new THREE.Mesh(finGeo, redMat);
+            const a = (i / 4) * Math.PI * 2;
+            fin.position.set(Math.cos(a) * 0.9, -2.5, Math.sin(a) * 0.9);
+            fin.rotation.y = -a + Math.PI / 2;
+            fin.castShadow = true;
+            rocketGroup.add(fin);
+        }
+
+        const nozzleBase = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, 0.5, 32), darkMat);
+        nozzleBase.position.y = -3.2;
+        nozzleBase.castShadow = true;
+        rocketGroup.add(nozzleBase);
+
+        const nozzlePositions = [
+            { x: 0.5, z: 0.5 }, { x: -0.5, z: 0.5 },
+            { x: 0.5, z: -0.5 }, { x: -0.5, z: -0.5 }
+        ];
+
+        nozzlePositions.forEach((pos) => {
+            const n = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.32, 0.8, 12, 1, true), darkMat);
+            n.position.set(pos.x, -3.7, pos.z);
+            n.castShadow = true;
+            rocketGroup.add(n);
+
+            const inner = new THREE.Mesh(
+                new THREE.CircleGeometry(0.28, 12),
+                new THREE.MeshBasicMaterial({ color: 0xffaa00, side: THREE.DoubleSide })
+            );
+            inner.rotation.x = Math.PI / 2;
+            inner.position.set(pos.x, -4.05, pos.z);
+            rocketGroup.add(inner);
+        });
+
+        const mainNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.7, 1.0, 20, 1, true), darkMat);
+        mainNozzle.position.y = -4.0;
+        mainNozzle.castShadow = true;
+        rocketGroup.add(mainNozzle);
+
+        const flames = [];
+        function createFlame(x, z, scale) {
+            const g = new THREE.Group();
+            const layers = [
+                { r: 0.25 * scale, h: 1.2 * scale, color: 0xffff88, op: 0.95, y: -0.6 * scale },
+                { r: 0.35 * scale, h: 2.0 * scale, color: 0xff8800, op: 0.7, y: -1.0 * scale },
+                { r: 0.5 * scale, h: 2.8 * scale, color: 0xff2200, op: 0.35, y: -1.4 * scale }
+            ];
+            layers.forEach((L) => {
+                const f = new THREE.Mesh(
+                    new THREE.ConeGeometry(L.r, L.h, 10),
+                    new THREE.MeshBasicMaterial({
+                        color: L.color, transparent: true, opacity: L.op,
+                        blending: THREE.AdditiveBlending, depthWrite: false
+                    })
+                );
+                f.rotation.x = Math.PI;
+                f.position.y = L.y;
+                g.add(f);
+            });
+            g.position.set(x, -4.4, z);
+            g.userData.phase = Math.random() * Math.PI * 2;
+            return g;
+        }
+
+        nozzlePositions.forEach((pos) => {
+            const f = createFlame(pos.x, pos.z, 1.0);
+            rocketGroup.add(f);
+            flames.push(f);
+        });
+        const mainFlame = createFlame(0, 0, 1.6);
+        rocketGroup.add(mainFlame);
+        flames.push(mainFlame);
+
+        const engineLight = new THREE.PointLight(0xff6600, 3, 12, 2);
+        engineLight.position.set(0, -4.5, 0);
+        rocketGroup.add(engineLight);
+
+        // ============================================================
+        // 5. ЛУНА С ПРИШЕЛЬЦАМИ (справа)
+        // ============================================================
+        const moonGroup = new THREE.Group();
+        moonGroup.position.set(16, 0, 0);
+        scene.add(moonGroup);
+
+        const moonMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(4, 48, 48),
+            new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.95, metalness: 0.05 })
+        );
+        moonMesh.castShadow = true;
+        moonMesh.receiveShadow = true;
+        moonGroup.add(moonMesh);
+
+        const craterMat = new THREE.MeshStandardMaterial({ color: 0x505050, roughness: 1.0, metalness: 0.0 });
+        const craterRimMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, roughness: 0.9, metalness: 0.05 });
+
+        const craterData = [
+            { lat: 30, lon: 20, r: 0.7 }, { lat: -20, lon: 60, r: 0.5 },
+            { lat: 10, lon: -40, r: 0.9 }, { lat: -50, lon: 100, r: 0.6 },
+            { lat: 60, lon: -80, r: 0.45 }, { lat: 0, lon: 140, r: 0.55 },
+            { lat: -30, lon: -120, r: 0.75 }, { lat: 45, lon: 160, r: 0.4 },
+            { lat: -10, lon: 180, r: 0.5 }, { lat: 20, lon: -160, r: 0.65 }
+        ];
+
+        craterData.forEach((c) => {
+            const lat = THREE.MathUtils.degToRad(c.lat);
+            const lon = THREE.MathUtils.degToRad(c.lon);
+            const R = 4;
+            const x = R * Math.cos(lat) * Math.cos(lon);
+            const y = R * Math.sin(lat);
+            const z = R * Math.cos(lat) * Math.sin(lon);
+            const pos = new THREE.Vector3(x, y, z);
+
+            const crater = new THREE.Mesh(new THREE.SphereGeometry(c.r, 16, 16), craterMat);
+            crater.position.copy(pos.clone().multiplyScalar(0.97));
+            crater.scale.set(1, 1, 0.35);
+            crater.lookAt(0, 0, 0);
+            moonGroup.add(crater);
+
+            const rim = new THREE.Mesh(
+                new THREE.TorusGeometry(c.r * 0.95, c.r * 0.15, 6, 20),
+                craterRimMat
+            );
+            rim.position.copy(pos.clone().multiplyScalar(0.995));
+            rim.lookAt(0, 0, 0);
+            rim.rotateX(Math.PI / 2);
+            moonGroup.add(rim);
+        });
+
+        const alienSkins = [
+            new THREE.MeshStandardMaterial({ color: 0x66ff88, roughness: 0.5, metalness: 0.1, emissive: 0x113311, emissiveIntensity: 0.3 }),
+            new THREE.MeshStandardMaterial({ color: 0x88ddff, roughness: 0.5, metalness: 0.1, emissive: 0x112233, emissiveIntensity: 0.3 }),
+            new THREE.MeshStandardMaterial({ color: 0xff88dd, roughness: 0.5, metalness: 0.1, emissive: 0x331122, emissiveIntensity: 0.3 })
+        ];
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.2, emissive: 0x00ff88, emissiveIntensity: 0.8 });
+        const antennaMat = new THREE.MeshStandardMaterial({ color: 0xffee00, emissive: 0xffcc00, emissiveIntensity: 1.2 });
+
+        function createAlien(skinMat, scale = 1) {
+            const alien = new THREE.Group();
+
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.4 * scale, 16, 16), skinMat);
+            body.scale.set(1, 1.3, 0.9);
+            body.position.y = 0.5 * scale;
+            body.castShadow = true;
+            alien.add(body);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.32 * scale, 16, 16), skinMat);
+            head.scale.set(1.1, 1.0, 0.9);
+            head.position.y = 1.1 * scale;
+            head.castShadow = true;
+            alien.add(head);
+
+            const eyeGeo = new THREE.SphereGeometry(0.09 * scale, 10, 10);
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(-0.13 * scale, 1.14 * scale, 0.25 * scale);
+            eyeL.scale.set(1.2, 1.5, 0.8);
+            alien.add(eyeL);
+
+            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeR.position.set(0.13 * scale, 1.14 * scale, 0.25 * scale);
+            eyeR.scale.set(1.2, 1.5, 0.8);
+            alien.add(eyeR);
+
+            for (let i = -1; i <= 1; i += 2) {
+                const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * scale, 0.015 * scale, 0.35 * scale, 6), skinMat);
+                ant.position.set(0.15 * i * scale, 1.45 * scale, 0);
+                ant.rotation.z = -0.3 * i;
+                alien.add(ant);
+
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 8, 8), antennaMat);
+                bulb.position.set(0.2 * i * scale, 1.62 * scale, 0);
+                alien.add(bulb);
+
+                const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.05 * scale, 0.5 * scale, 6), skinMat);
+                arm.position.set(0.42 * i * scale, 0.6 * scale, 0);
+                arm.rotation.z = i * 0.4;
+                arm.castShadow = true;
+                alien.add(arm);
+
+                const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07 * scale, 8, 8), skinMat);
+                hand.position.set(0.55 * i * scale, 0.4 * scale, 0);
+                alien.add(hand);
+
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * scale, 0.06 * scale, 0.35 * scale, 6), skinMat);
+                leg.position.set(0.14 * i * scale, 0.18 * scale, 0);
+                leg.castShadow = true;
+                alien.add(leg);
+            }
+
+            return alien;
+        }
+
+        const alienPositions = [
+            { lat: 25, lon: 15, scale: 1.0, rotY: 0.3 },
+            { lat: -15, lon: 50, scale: 0.9, rotY: -0.8 },
+            { lat: 5, lon: -30, scale: 1.1, rotY: 1.2 },
+            { lat: -40, lon: 100, scale: 0.85, rotY: 2.0 },
+            { lat: 50, lon: -70, scale: 0.95, rotY: -1.5 },
+            { lat: 10, lon: 130, scale: 1.0, rotY: 0.7 }
+        ];
+
+        const aliens = [];
+        alienPositions.forEach((a, idx) => {
+            const lat = THREE.MathUtils.degToRad(a.lat);
+            const lon = THREE.MathUtils.degToRad(a.lon);
+            const R = 4;
+            const x = R * Math.cos(lat) * Math.cos(lon);
+            const y = R * Math.sin(lat);
+            const z = R * Math.cos(lat) * Math.sin(lon);
+
+            const alien = createAlien(alienSkins[idx % 3], a.scale);
+            const pos = new THREE.Vector3(x, y, z).normalize().multiplyScalar(R + 0.05);
+            alien.position.copy(pos);
+            alien.lookAt(pos.clone().multiplyScalar(2));
+            alien.rotateY(a.rotY);
+
+            alien.userData.baseY = pos.y;
+            alien.userData.phase = idx * 1.7;
+
+            moonGroup.add(alien);
+            aliens.push(alien);
+        });
+
+        // НЛО
+        const ufoGroup = new THREE.Group();
+        ufoGroup.position.set(0, 6, 0);
+        moonGroup.add(ufoGroup);
+
+        const ufoBody = new THREE.Mesh(
+            new THREE.SphereGeometry(0.9, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.2, metalness: 1.0, emissive: 0x334466, emissiveIntensity: 0.3 })
+        );
+        ufoBody.scale.set(1, 0.35, 1);
+        ufoBody.castShadow = true;
+        ufoGroup.add(ufoBody);
+
+        const ufoBottom = new THREE.Mesh(
+            new THREE.SphereGeometry(0.9, 20, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0x666677, roughness: 0.3, metalness: 0.9 })
+        );
+        ufoBottom.scale.set(1, 0.15, 1);
+        ufoGroup.add(ufoBottom);
+
+        const ufoDome = new THREE.Mesh(
+            new THREE.SphereGeometry(0.35, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.05, metalness: 0.3, emissive: 0x2266aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.8 })
+        );
+        ufoDome.position.y = 0.15;
+        ufoGroup.add(ufoDome);
+
+        const ufoLights = [];
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const lm = new THREE.Mesh(
+                new THREE.SphereGeometry(0.07, 8, 8),
+                new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff3344 : 0x33ff88 })
+            );
+            lm.position.set(Math.cos(a) * 0.85, -0.05, Math.sin(a) * 0.85);
+            ufoGroup.add(lm);
+            ufoLights.push(lm);
+        }
+
+        const beamLight = new THREE.PointLight(0x88ccff, 1.5, 8, 2);
+        beamLight.position.set(0, -0.5, 0);
+        ufoGroup.add(beamLight);
+
+        // ============================================================
+        // 6. ШАРАЛЁТ С ПИНОМ (парит между ракетой и Луной)
+        // ============================================================
+        const sharalyotGroup = new THREE.Group();
+        // Расположим между ракетой и Луной, чуть выше
+        sharalyotGroup.position.set(0, 8, 0);
+        scene.add(sharalyotGroup);
+
+        // --- Корпус шаралёта — большая сфера ---
+        const sharBodyMat = new THREE.MeshStandardMaterial({
+            color: 0xdd4466,      // Красный/розовый
+            roughness: 0.3,
+            metalness: 0.4,
+            emissive: 0x330011,
+            emissiveIntensity: 0.2
+        });
+
+        const sharBody = new THREE.Mesh(new THREE.SphereGeometry(2.4, 48, 48), sharBodyMat);
+        sharBody.castShadow = true;
+        sharBody.receiveShadow = true;
+        sharalyotGroup.add(sharBody);
+
+        // --- Обручи вокруг сферы (декоративные) ---
+        const hoopMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc33,
+            roughness: 0.3,
+            metalness: 0.9,
+            emissive: 0x332200,
+            emissiveIntensity: 0.3
+        });
+
+        // Горизонтальный обруч
+        const hoop1 = new THREE.Mesh(new THREE.TorusGeometry(2.42, 0.08, 12, 64), hoopMat);
+        hoop1.rotation.x = Math.PI / 2;
+        sharalyotGroup.add(hoop1);
+
+        // Вертикальный обруч
+        const hoop2 = new THREE.Mesh(new THREE.TorusGeometry(2.42, 0.08, 12, 64), hoopMat);
+        sharalyotGroup.add(hoop2);
+
+        // Диагональный обруч
+        const hoop3 = new THREE.Mesh(new THREE.TorusGeometry(2.42, 0.08, 12, 64), hoopMat);
+        hoop3.rotation.z = Math.PI / 4;
+        hoop3.rotation.y = Math.PI / 4;
+        sharalyotGroup.add(hoop3);
+
+        // --- Иллюминатор (круглое окно на передней части) ---
+        // Направление "вперёд" — это +Z
+        const windowOuterMat = new THREE.MeshStandardMaterial({
+            color: 0xcccccc,
+            roughness: 0.3,
+            metalness: 0.9
+        });
+        const windowOuter = new THREE.Mesh(
+            new THREE.TorusGeometry(0.85, 0.12, 12, 32),
+            windowOuterMat
+        );
+        windowOuter.position.set(0, 0.3, 2.3);
+        windowOuter.rotation.x = -0.15;
+        sharalyotGroup.add(windowOuter);
+
+        // Стекло иллюминатора (прозрачное)
+        const windowGlassMat = new THREE.MeshStandardMaterial({
+            color: 0x88ddff,
+            roughness: 0.05,
+            metalness: 0.2,
+            emissive: 0x2288cc,
+            emissiveIntensity: 0.4,
+            transparent: true,
+            opacity: 0.55
+        });
+        const windowGlass = new THREE.Mesh(
+            new THREE.CircleGeometry(0.85, 32),
+            windowGlassMat
+        );
+        windowGlass.position.set(0, 0.3, 2.32);
+        windowGlass.rotation.x = -0.15;
+        sharalyotGroup.add(windowGlass);
+
+        // --- ПИН (внутри шаралёта, смотрит в иллюминатор) ---
+        const pinGroup = new THREE.Group();
+        pinGroup.position.set(0, -0.1, 1.4);   // чуть внутри шаралёта
+        pinGroup.rotation.y = Math.PI;         // смотрит назад (в сторону -Z — а окно на +Z)
+        // На самом деле окно на +Z, поэтому развернём лицом к +Z:
+        pinGroup.rotation.y = 0;
+        pinGroup.rotation.x = -0.15;           // наклон вниз, как наклонён иллюминатор
+        sharalyotGroup.add(pinGroup);
+
+        // Тело Пина — сфера (как шар)
+        const pinBodyMat = new THREE.MeshStandardMaterial({
+            color: 0x222222,        // Чёрный Пин
+            roughness: 0.6,
+            metalness: 0.1
+        });
+        const pinBody = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), pinBodyMat);
+        pinBody.castShadow = true;
+        pinGroup.add(pinBody);
+
+        // Живот Пина — белый
+        const pinBellyMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.7,
+            metalness: 0.05
+        });
+        const pinBelly = new THREE.Mesh(new THREE.SphereGeometry(0.43, 32, 32), pinBellyMat);
+        pinBelly.position.set(0, -0.05, 0.22);
+        pinBelly.scale.set(1, 1, 0.5);
+        pinGroup.add(pinBelly);
+
+        // Клюв Пина — оранжевый
+        const beakMat = new THREE.MeshStandardMaterial({
+            color: 0xff8800,
+            roughness: 0.5,
+            metalness: 0.1
+        });
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 16), beakMat);
+        beak.position.set(0, 0.05, 0.55);
+        beak.rotation.x = Math.PI / 2;
+        pinGroup.add(beak);
+
+        // Глаза Пина — большие белые с чёрными зрачками
+        const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+        const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.2 });
+
+        for (let i = -1; i <= 1; i += 2) {
+            const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 20), eyeWhiteMat);
+            eyeWhite.position.set(0.17 * i, 0.2, 0.42);
+            pinGroup.add(eyeWhite);
+
+            const eyeBlack = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), eyeBlackMat);
+            eyeBlack.position.set(0.17 * i, 0.2, 0.55);
+            pinGroup.add(eyeBlack);
+        }
+
+        // Крылья Пина (чёрные) — по бокам
+        for (let i = -1; i <= 1; i += 2) {
+            const wing = new THREE.Mesh(
+                new THREE.SphereGeometry(0.22, 16, 16),
+                pinBodyMat
+            );
+            wing.position.set(0.52 * i, -0.05, -0.05);
+            wing.scale.set(0.6, 1.2, 0.4);
+            pinGroup.add(wing);
+        }
+
+        // Лапки Пина — оранжевые
+        const legMat = new THREE.MeshStandardMaterial({ color: 0xff8800, roughness: 0.5 });
+        for (let i = -1; i <= 1; i += 2) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 8), legMat);
+            leg.position.set(0.18 * i, -0.55, 0.1);
+            pinGroup.add(leg);
+
+            const foot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), legMat);
+            foot.position.set(0.18 * i, -0.68, 0.18);
+            foot.scale.set(1.4, 0.6, 1.4);
+            pinGroup.add(foot);
+        }
+
+        // Хохолок Пина (торчит сверху)
+        const crest = new THREE.Mesh(
+            new THREE.ConeGeometry(0.06, 0.25, 8),
+            pinBodyMat
+        );
+        crest.position.set(0, 0.55, 0.05);
+        crest.rotation.x = -0.3;
+        pinGroup.add(crest);
+
+        // --- Двигатели шаралёта снизу ---
+        const thrusterMat = new THREE.MeshStandardMaterial({
+            color: 0x666677,
+            roughness: 0.4,
+            metalness: 0.9
+        });
+        const thrusterPositions = [
+            { x: 1.2, z: 1.2 },
+            { x: -1.2, z: 1.2 },
+            { x: 1.2, z: -1.2 },
+            { x: -1.2, z: -1.2 }
+        ];
+        const sharFlames = [];
+
+        thrusterPositions.forEach((p) => {
+            // Сопло
+            const thruster = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.28, 0.4, 12),
+                thrusterMat
+            );
+            // Позиция под сферой
+            const angle = Math.atan2(p.z, p.x);
+            const r = Math.sqrt(p.x * p.x + p.z * p.z);
+            thruster.position.set(p.x, -2.15, p.z);
+            thruster.rotation.x = Math.PI;
+            sharalyotGroup.add(thruster);
+
+            // Пламя
+            const flameGroup = new THREE.Group();
+            const flameLayers = [
+                { r: 0.18, h: 0.7, color: 0xffff88, op: 0.9, y: -0.35 },
+                { r: 0.24, h: 1.1, color: 0xff8800, op: 0.6, y: -0.55 },
+                { r: 0.32, h: 1.5, color: 0xff2200, op: 0.3, y: -0.75 }
+            ];
+            flameLayers.forEach((L) => {
+                const f = new THREE.Mesh(
+                    new THREE.ConeGeometry(L.r, L.h, 10),
+                    new THREE.MeshBasicMaterial({
+                        color: L.color, transparent: true, opacity: L.op,
+                        blending: THREE.AdditiveBlending, depthWrite: false
+                    })
+                );
+                f.rotation.x = Math.PI;
+                f.position.y = L.y;
+                flameGroup.add(f);
+            });
+            flameGroup.position.set(p.x, -2.35, p.z);
+            flameGroup.userData.phase = Math.random() * Math.PI * 2;
+            sharalyotGroup.add(flameGroup);
+            sharFlames.push(flameGroup);
+        });
+
+        // Свет от двигателей шаралёта
+        const sharLight = new THREE.PointLight(0xff8800, 2, 10, 2);
+        sharLight.position.set(0, -2.5, 0);
+        sharalyotGroup.add(sharLight);
+
+        // --- Антенна сверху шаралёта ---
+        const antennaRod = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 0.8, 8),
+            hoopMat
+        );
+        antennaRod.position.set(0, 2.9, 0);
+        sharalyotGroup.add(antennaRod);
+
+        const antennaBall = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 16, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 1.5
+            })
+        );
+        antennaBall.position.set(0, 3.32, 0);
+        sharalyotGroup.add(antennaBall);
+
+        // ============================================================
+        // 7. ЛОСЯШ В СКАФАНДРЕ (парит рядом с шаралётом)
+        // ============================================================
+        const losyashGroup = new THREE.Group();
+        // Справа от шаралёта, чуть ниже
+        losyashGroup.position.set(6, 7, 2);
+        losyashGroup.rotation.y = -0.6;
+        scene.add(losyashGroup);
+
+        // --- Тело Лосяша (жёлто-оранжевое, лось) ---
+        const losBodyMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc44,      // Жёлто-оранжевый, как у Лосяша
+            roughness: 0.6,
+            metalness: 0.1
+        });
+
+        // Основное тело (вытянутое)
+        const losBody = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 32), losBodyMat);
+        losBody.scale.set(0.9, 1.3, 0.8);
+        losBody.position.y = 0.6;
+        losBody.castShadow = true;
+        losyashGroup.add(losBody);
+
+        // Голова Лосяша (вытянутая морда)
+        const losHead = new THREE.Mesh(new THREE.SphereGeometry(0.45, 32, 32), losBodyMat);
+        losHead.scale.set(0.9, 0.9, 1.2);
+        losHead.position.set(0, 1.4, 0.15);
+        losHead.castShadow = true;
+        losyashGroup.add(losHead);
+
+        // Морда (вытянутая часть)
+        const losSnout = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 24), losBodyMat);
+        losSnout.scale.set(0.8, 0.7, 1.1);
+        losSnout.position.set(0, 1.3, 0.55);
+        losyashGroup.add(losSnout);
+
+        // Нос (тёмный шарик)
+        const losNose = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4 })
+        );
+        losNose.position.set(0, 1.3, 0.82);
+        losyashGroup.add(losNose);
+
+        // Глаза Лосяша — большие, как у Смешариков (белый шар + чёрный зрачок)
+        for (let i = -1; i <= 1; i += 2) {
+            const eyeWhite = new THREE.Mesh(
+                new THREE.SphereGeometry(0.18, 20, 20),
+                new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+            );
+            eyeWhite.position.set(0.22 * i, 1.55, 0.35);
+            losyashGroup.add(eyeWhite);
+
+            const eyeBlack = new THREE.Mesh(
+                new THREE.SphereGeometry(0.09, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.2 })
+            );
+            eyeBlack.position.set(0.22 * i, 1.55, 0.5);
+            losyashGroup.add(eyeBlack);
+        }
+
+        // Рога Лосяша — большие ветвистые (упрощённо: 2 пары отростков)
+        const hornMat = new THREE.MeshStandardMaterial({
+            color: 0x8b5a2b,   // Коричневые
+            roughness: 0.7,
+            metalness: 0.1
+        });
+
+        // Основание рогов
+        for (let i = -1; i <= 1; i += 2) {
+            const hornBase = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.07, 0.5, 8),
+                hornMat
+            );
+            hornBase.position.set(0.22 * i, 1.8, 0.1);
+            hornBase.rotation.z = i * 0.4;
+            losyashGroup.add(hornBase);
+
+            // Отводки от рогов
+            const branch1 = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.05, 0.35, 8),
+                hornMat
+            );
+            branch1.position.set(0.35 * i, 2.05, 0.1);
+            branch1.rotation.z = i * 0.8;
+            losyashGroup.add(branch1);
+
+            const branch2 = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.025, 0.04, 0.3, 8),
+                hornMat
+            );
+            branch2.position.set(0.2 * i, 2.15, 0.1);
+            branch2.rotation.z = i * 0.2;
+            losyashGroup.add(branch2);
+
+            // Шарики на концах рогов
+            const tipBall = new THREE.Mesh(
+                new THREE.SphereGeometry(0.05, 10, 10),
+                hornMat
+            );
+            tipBall.position.set(0.55 * i, 2.3, 0.1);
+            losyashGroup.add(tipBall);
+        }
+
+        // --- Скафандр вокруг Лосяша (полупрозрачный пузырь) ---
+        const suitMat = new THREE.MeshPhysicalMaterial({
+            color: 0x88ddff,
+            roughness: 0.1,
+            metalness: 0.0,
+            transmission: 0.85,
+            transparent: true,
+            opacity: 0.35,
+            thickness: 0.5,
+            ior: 1.3,
+            clearcoat: 0.8,
+            side: THREE.DoubleSide
+        });
+
+        const suitBubble = new THREE.Mesh(new THREE.SphereGeometry(1.3, 32, 32), suitMat);
+        suitBubble.position.set(0, 1.1, 0);
+        losyashGroup.add(suitBubble);
+
+        // Рамка скафандра (металлическое кольцо вокруг шеи)
+        const suitRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.65, 0.07, 12, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                roughness: 0.3,
+                metalness: 0.9
+            })
+        );
+        suitRing.position.set(0, 1.1, 0);
+        suitRing.rotation.x = Math.PI / 2;
+        losyashGroup.add(suitRing);
+
+        // Второе кольцо (пояс скафандра)
+        const suitBelt = new THREE.Mesh(
+            new THREE.TorusGeometry(0.7, 0.05, 12, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0xaaaaaa, roughness: 0.4, metalness: 0.9
+            })
+        );
+        suitBelt.position.set(0, 0.55, 0);
+        suitBelt.rotation.x = Math.PI / 2;
+        losyashGroup.add(suitBelt);
+
+        // Маленький шланг/трубка на спине скафандра (жизнеобеспечение)
+        const backpack = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, 0.7, 0.3),
+            new THREE.MeshStandardMaterial({
+                color: 0x888899, roughness: 0.5, metalness: 0.7
+            })
+        );
+        backpack.position.set(0, 1.1, -0.85);
+        losyashGroup.add(backpack);
+
+        // Трубка от рюкзака к голове
+        const tubeMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.7 });
+        const tube = new THREE.Mesh(
+            new THREE.TorusGeometry(0.3, 0.04, 8, 20, Math.PI),
+            tubeMat
+        );
+        tube.position.set(0.3, 1.35, -0.7);
+        tube.rotation.z = -Math.PI / 2;
+        tube.rotation.y = Math.PI / 3;
+        losyashGroup.add(tube);
+
+        // --- Конечности в скафандре (руки-ноги) ---
+        // Руки (жёлтые, с перчатками)
+        for (let i = -1; i <= 1; i += 2) {
+            // Рука (внутри скафандра)
+            const arm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.1, 0.6, 12),
+                losBodyMat
+            );
+            arm.position.set(0.7 * i, 0.9, 0.1);
+            arm.rotation.z = i * 0.5;
+            arm.castShadow = true;
+            losyashGroup.add(arm);
+
+            // Перчатка скафандра
+            const glove = new THREE.Mesh(
+                new THREE.SphereGeometry(0.13, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xdddddd, roughness: 0.5, metalness: 0.4
+                })
+            );
+            glove.position.set(0.95 * i, 0.65, 0.15);
+            losyashGroup.add(glove);
+
+            // Нога (внутри скафандра)
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.12, 0.5, 12),
+                losBodyMat
+            );
+            leg.position.set(0.25 * i, 0.1, 0);
+            losyashGroup.add(leg);
+
+            // Ботинок скафандра
+            const boot = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xdddddd, roughness: 0.5, metalness: 0.4
+                })
+            );
+            boot.position.set(0.25 * i, -0.2, 0.05);
+            boot.scale.set(1.2, 0.7, 1.5);
+            losyashGroup.add(boot);
+        }
+
+        // Ранцевый двигатель / небольшие сопла у Лосяша
+        const losThrusterMat = new THREE.MeshStandardMaterial({
+            color: 0x666677, roughness: 0.4, metalness: 0.9
+        });
+        const losFlames = [];
+        for (let i = -1; i <= 1; i += 2) {
+            const thr = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.12, 0.25, 10),
+                losThrusterMat
+            );
+            thr.position.set(0.35 * i, -0.35, -0.2);
+            thr.rotation.x = Math.PI;
+            losyashGroup.add(thr);
+
+            // Маленькое пламя
+            const lf = new THREE.Mesh(
+                new THREE.ConeGeometry(0.1, 0.5, 8),
+                new THREE.MeshBasicMaterial({
+                    color: 0x88ddff, transparent: true, opacity: 0.7,
+                    blending: THREE.AdditiveBlending, depthWrite: false
+                })
+            );
+            lf.rotation.x = Math.PI;
+            lf.position.set(0.35 * i, -0.7, -0.2);
+            lf.userData.phase = Math.random() * Math.PI * 2;
+            losyashGroup.add(lf);
+            losFlames.push(lf);
+        }
+
+        // ============================================================
+        // 8. ЗВЁЗДЫ
+        // ============================================================
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 3500;
+        const starsPos = new Float32Array(starsCount * 3);
+        const starsCol = new Float32Array(starsCount * 3);
+
+        for (let i = 0; i < starsCount; i++) {
+            const i3 = i * 3;
+            starsPos[i3] = (Math.random() - 0.5) * 1200;
+            starsPos[i3 + 1] = (Math.random() - 0.5) * 1200;
+            starsPos[i3 + 2] = (Math.random() - 0.5) * 1200;
+
+            const c = new THREE.Color().setHSL(0.55 + Math.random() * 0.2, 0.5, 0.7 + Math.random() * 0.3);
+            starsCol[i3] = c.r;
+            starsCol[i3 + 1] = c.g;
+            starsCol[i3 + 2] = c.b;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+        starsGeo.setAttribute('color', new THREE.BufferAttribute(starsCol, 3));
+
+        const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({
+            size: 0.6, vertexColors: true, transparent: true, opacity: 0.9,
+            blending: THREE.AdditiveBlending, sizeAttenuation: true
+        }));
+        scene.add(stars);
+
+        // ============================================================
+        // 9. СОЗВЕЗДИЕ МАЛОЙ МЕДВЕДИЦЫ
+        // ============================================================
+        const ursaMinorGroup = new THREE.Group();
+        ursaMinorGroup.position.set(-18, 32, -70);
+        ursaMinorGroup.rotation.z = -0.25;
+        scene.add(ursaMinorGroup);
+
+        const ursaMinorStars = [
+            { x: 0.0, y: 0.0, size: 0.55 },
+            { x: 1.2, y: 1.0, size: 0.30 },
+            { x: 2.4, y: 2.0, size: 0.32 },
+            { x: 3.6, y: 3.0, size: 0.38 },
+            { x: 3.2, y: 4.4, size: 0.42 },
+            { x: 4.8, y: 5.0, size: 0.45 },
+            { x: 5.6, y: 3.8, size: 0.40 }
+        ];
+        const lineOrder = [0, 1, 2, 3, 4, 5, 6, 3];
+        const starColors = [0xffffff, 0xaaddff, 0xffeebb, 0xffffff, 0xffeedd, 0xccddff, 0xffffff];
+        const starMeshes = [];
+
+        ursaMinorStars.forEach((s, i) => {
+            const star = new THREE.Mesh(
+                new THREE.SphereGeometry(s.size, 16, 16),
+                new THREE.MeshBasicMaterial({ color: starColors[i], transparent: true, opacity: 0.95 })
+            );
+            star.position.set(s.x, s.y, 0);
+            ursaMinorGroup.add(star);
+            starMeshes.push(star);
+
+            const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(s.size * 2.2, 16, 16),
+                new THREE.MeshBasicMaterial({
+                    color: starColors[i], transparent: true, opacity: 0.15,
+                    blending: THREE.AdditiveBlending, depthWrite: false
+                })
+            );
+            glow.position.copy(star.position);
+            ursaMinorGroup.add(glow);
+        });
+
+        starMeshes[0].scale.setScalar(1.3);
+
+        const linePoints = lineOrder.map((idx) => new THREE.Vector3(ursaMinorStars[idx].x, ursaMinorStars[idx].y, 0));
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(linePoints);
+        const constellationLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+            color: 0x88bbff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending
+        }));
+        ursaMinorGroup.add(constellationLine);
+
+        const polarisHalo = new THREE.Mesh(
+            new THREE.RingGeometry(0.9, 1.0, 32),
+            new THREE.MeshBasicMaterial({
+                color: 0x88ddff, transparent: true, opacity: 0.5,
+                side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
+            })
+        );
+        polarisHalo.position.copy(starMeshes[0].position);
+        polarisHalo.position.z = 0.02;
+        ursaMinorGroup.add(polarisHalo);
+
+        const polarisPulse = new THREE.Mesh(
+            new THREE.RingGeometry(1.2, 1.35, 32),
+            new THREE.MeshBasicMaterial({
+                color: 0xaaeeff, transparent: true, opacity: 0.4,
+                side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
+            })
+        );
+        polarisPulse.position.copy(starMeshes[0].position);
+        polarisPulse.position.z = 0.01;
+        ursaMinorGroup.add(polarisPulse);
+
+        // ============================================================
+        // 10. АНИМАЦИЯ
+        // ============================================================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsed = clock.getElapsedTime();
+
+            // Пламя ракеты
+            flames.forEach((flame) => {
+                const sY = 1 + Math.sin(elapsed * 15 + flame.userData.phase) * 0.15;
+                const sXZ = 1 + Math.sin(elapsed * 12 + flame.userData.phase) * 0.1;
+                flame.scale.set(sXZ, sY, sXZ);
+                flame.children.forEach((child, i) => {
+                    if (child.material) {
+                        child.material.opacity = (0.4 + Math.random() * 0.4) * (i === 0 ? 1 : i === 1 ? 0.8 : 0.5);
+                    }
+                });
+            });
+            engineLight.intensity = 2.5 + Math.sin(elapsed * 20) * 0.8;
+
+            // Пламя шаралёта
+            sharFlames.forEach((flame) => {
+                const sY = 1 + Math.sin(elapsed * 18 + flame.userData.phase) * 0.2;
+                const sXZ = 1 + Math.sin(elapsed * 14 + flame.userData.phase) * 0.15;
+                flame.scale.set(sXZ, sY, sXZ);
+            });
+            sharLight.intensity = 1.8 + Math.sin(elapsed * 22) * 0.7;
+
+            // Пламя Лосяша
+            losFlames.forEach((f) => {
+                const s = 1 + Math.sin(elapsed * 20 + f.userData.phase) * 0.25;
+                f.scale.set(s, s, s);
+            });
+
+            // Лёгкое покачивание шаралёта
+            sharalyotGroup.position.y = 8 + Math.sin(elapsed * 0.8) * 0.4;
+            sharalyotGroup.rotation.y = Math.sin(elapsed * 0.4) * 0.15;
+            // Пин слегка поворачивает голову, "осматривает" пространство
+            pinGroup.rotation.y = Math.sin(elapsed * 0.6) * 0.3;
+            // Антенна на шаралёте мигает
+            antennaBall.material.emissiveIntensity = 0.8 + Math.sin(elapsed * 6) * 0.8;
+
+            // Лосяш парит и покачивается
+            losyashGroup.position.y = 7 + Math.sin(elapsed * 0.7 + 1.5) * 0.5;
+            losyashGroup.rotation.y = -0.6 + Math.sin(elapsed * 0.3) * 0.2;
+            losyashGroup.rotation.z = Math.sin(elapsed * 0.5) * 0.08;
+
+            // Пришельцы
+            aliens.forEach((alien) => {
+                const phase = alien.userData.phase;
+                alien.position.y = alien.userData.baseY + Math.sin(elapsed * 3 + phase) * 0.08;
+                alien.rotation.y += Math.sin(elapsed * 2 + phase) * 0.005;
+            });
+
+            // Луна
+            moonGroup.rotation.y += 0.0008;
+
+            // НЛО
+            ufoGroup.rotation.y += 0.02;
+            ufoGroup.position.y = 6 + Math.sin(elapsed * 1.5) * 0.4;
+            ufoGroup.rotation.z = Math.sin(elapsed * 0.8) * 0.1;
+
+            ufoLights.forEach((light, i) => {
+                const flash = Math.sin(elapsed * 5 + i * 0.8);
+                light.material.color.setHex(flash > 0 ? (i % 2 === 0 ? 0xff3344 : 0x33ff88) : 0x222222);
+            });
+
+            beamLight.intensity = 1.2 + Math.sin(elapsed * 4) * 0.6;
+
+            stars.rotation.y += 0.0001;
+
+            ursaMinorGroup.rotation.z += 0.00005;
+
+            starMeshes.forEach((star, i) => {
+                star.material.opacity = 0.85 + Math.sin(elapsed * (2 + i * 0.3) + i) * 0.15;
+            });
+
+            const pulseProgress = (elapsed * 0.5) % 1;
+            polarisPulse.scale.setScalar(1 + pulseProgress * 2.5);
+            polarisPulse.material.opacity = 0.5 * (1 - pulseProgress);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // ============================================================
+        // 11. RESIZE
+        // ============================================================
+        function onResize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }
+
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', onResize);
+        }
+
+        // ============================================================
+        // СТАРТ
+        // ============================================================
+        animate();
+
+        setTimeout(() => {
+            document.getElementById('loading').classList.add('hidden');
+        }, 400);
+
+        console.log('🚀 Шаралёт с Пином и Лосяш в скафандре на орбите!');
+    </script>
+</body>
+</html>
